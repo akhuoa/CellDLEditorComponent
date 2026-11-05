@@ -113,9 +113,16 @@ export enum CONTEXT_MENU {
 
 //==============================================================================
 
-// The editor most recently interacted with. Keyboard input is only handled by this editor.
+// Is a key event from an element that takes text input (e.g. a field in a panel)?
 
-let activeEditor: CellDLEditor | null = null
+function fromEditableElement(event: KeyboardEvent): boolean {
+    const target = event.composedPath()[0]
+    return target instanceof HTMLElement
+        && (target.isContentEditable
+         || target instanceof HTMLInputElement
+         || target instanceof HTMLTextAreaElement
+         || target instanceof HTMLSelectElement)
+}
 
 //==============================================================================
 
@@ -276,24 +283,28 @@ export class CellDLEditor {
         document.addEventListener('focusin', this.#focusEvent.bind(this))
         document.addEventListener('focusout', this.#focusEvent.bind(this))
 
-        // Keyboard handlers. Keys are only acted on by the active editor, which is the
-        // editor that was last clicked in (or the first editor mounted).
-        const editorRoot = svgContainer.closest('.celldl-editor') ?? svgContainer
-        if (activeEditor === null) {
-            activeEditor = this
+        // Keyboard handlers. These are on the editor's own root element, so an editor only
+        // acts on keys while focus is somewhere inside it (its canvas, toolbar or panels).
+        // A hidden editor can't have focus, so is never changed by the keyboard. The canvas
+        // is made focusable so that clicking in the diagram gives the editor focus.
+        const editorRoot = svgContainer.closest<HTMLElement>('.celldl-editor') ?? svgContainer
+        if (!this.#container.hasAttribute('tabindex')) {
+            this.#container.tabIndex = 0
         }
-        document.addEventListener('pointerdown', (event: PointerEvent) => {
-            if (event.composedPath().includes(editorRoot)) {
-                activeEditor = this
-            }
+        // The diagram's pointer handlers may prevent default actions, including focusing
+        shadowRoot.addEventListener('pointerdown', () => {
+            this.#container?.focus({ preventScroll: true })
         }, { capture: true })
-        window.addEventListener('keydown', (event: KeyboardEvent) => {
-            if (activeEditor === this) {
+        // Browsers don't always move focus out of an element when it's hidden (e.g. with
+        // `display: none` when switching tabs), so also check the editor is visible.
+        const visible = () => editorRoot.checkVisibility({ visibilityProperty: true })
+        editorRoot.addEventListener('keydown', (event: KeyboardEvent) => {
+            if (visible()) {
                 this.#keyDownEvent(event)
             }
         })
-        window.addEventListener('keyup', (event: KeyboardEvent) => {
-            if (activeEditor === this) {
+        editorRoot.addEventListener('keyup', (event: KeyboardEvent) => {
+            if (visible()) {
                 this.#keyUpEvent(event)
             }
         })
@@ -1147,6 +1158,10 @@ export class CellDLEditor {
     }
 
     #keyDownEvent(event: KeyboardEvent) {
+        // Keys typed into a field (e.g. in a panel) are for that field, not the diagram
+        if (fromEditableElement(event)) {
+            return
+        }
         if (this.#editorMode === EDITOR_MODE.PathDrawing
          && (event.key === 'Escape' || event.key === 'Backspace')) {
             if (this.#pathMaker) {
@@ -1155,12 +1170,9 @@ export class CellDLEditor {
                 this.#pathMaker = null
             }
         } else if (event.key === 'Backspace') {
-            if (this.#haveFocus) {
-                this.#deleteSelectedObjects()
-            } else if (event.target === document.body) {
-                // Prevent the default browser action (navigating back)
-                event.preventDefault()
-            }
+            // Prevent any default browser action (e.g. navigating back)
+            event.preventDefault()
+            this.#deleteSelectedObjects()
         } else if (this.#editorMode === EDITOR_MODE.Selecting
             && (isMacOs() && event.metaKey
             || !isMacOs() && event.ctrlKey)) {
