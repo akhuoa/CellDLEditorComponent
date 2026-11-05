@@ -408,10 +408,15 @@ vue.watch(
 
 //==============================================================================
 
+let unmounted = false
+
 vue.onMounted(async () => {
     if (svgContainer.value) {
         const svgContainerElement: HTMLElement = svgContainer.value
         window.setTimeout(async () => {
+            if (unmounted) {
+                return
+            }
             if (svgContainerElement.clientWidth === 0 || svgContainerElement.clientHeight === 0) {
                 console.error('zero sized container!!')
             }
@@ -425,6 +430,12 @@ vue.onMounted(async () => {
             emit('editor-ready')
         })
     }
+})
+
+vue.onUnmounted(() => {
+    unmounted = true
+    celldlEditor.destroy()
+    celldlDiagram = undefined
 })
 
 //==============================================================================
