@@ -143,7 +143,11 @@ if (crtInstance) {
         })
     }
 
-    app.use(vueTippy)
+    // Install vue-tippy once per app, as several editors may be in it. (Its plugin
+    // registers a `tippy` directive but no global property, so check for that.)
+    if (!app.directive('tippy')) {
+        app.use(vueTippy)
+    }
 
     // Register our Bondgraph and Drawing plugins with the component library manager
 
