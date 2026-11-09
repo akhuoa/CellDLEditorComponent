@@ -16,7 +16,7 @@
         .flex.flex-col.w-full.h-full
             .flex.top-header
                 MainMenu(
-                :id="mainMenuId"
+                    :id="mainMenuId"
                     :haveFile="haveFile"
                     :fileModified="fileModified"
                     :editorStatus="editorStatus"
