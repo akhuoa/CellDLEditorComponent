@@ -36,6 +36,7 @@ export class PanZoom {
     #container: HTMLElement
     #containerSize: Point = new Point()
     #resizeObserver: ResizeObserver
+    #listeners = new AbortController()
 
     #minScale: number = 0.125
     #scale: number = 1
@@ -43,11 +44,19 @@ export class PanZoom {
     #step: number = 0.05
 
     constructor(container: HTMLElement) {
-        container.addEventListener('wheel', this.#wheelEvent.bind(this), { passive: true })
+        container.addEventListener('wheel', this.#wheelEvent.bind(this),
+                                   { passive: true, signal: this.#listeners.signal })
         this.#container = container
         this.#containerSize = new Point(container.clientWidth, container.clientHeight)
         this.#resizeObserver = new ResizeObserver(this.#resizeObservation.bind(this))
         this.#resizeObserver.observe(container)
+    }
+
+    destroy() {
+        this.#listeners.abort()
+        this.#resizeObserver.disconnect()
+        this.#svgDiagram = null
+        this.#editGuides = null
     }
 
     get panning() {

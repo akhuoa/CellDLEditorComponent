@@ -113,9 +113,16 @@ export enum CONTEXT_MENU {
 
 //==============================================================================
 
-// The editor most recently interacted with. Keyboard input is only handled by this editor.
+// Is a key event from an element that takes text input (e.g. a field in a panel)?
 
-let activeEditor: CellDLEditor | null = null
+function fromEditableElement(event: KeyboardEvent): boolean {
+    const target = event.composedPath()[0]
+    return target instanceof HTMLElement
+        && (target.isContentEditable
+         || target instanceof HTMLInputElement
+         || target instanceof HTMLTextAreaElement
+         || target instanceof HTMLSelectElement)
+}
 
 //==============================================================================
 
@@ -137,6 +144,7 @@ const SVG_PANEL_ID = 'svg-panel'
 
 export class CellDLEditor {
     #container: HTMLElement | null = null
+    #shadowHost: HTMLElement | null = null
     #shadowRoot: ShadowRoot | null = null
     #statusMsg: HTMLElement | null = null
     #statusPos: HTMLElement | null = null
@@ -159,7 +167,8 @@ export class CellDLEditor {
     #dirty: boolean = false
 
     #dragging: boolean = false
-    #haveFocus: boolean = true
+    // Aborting this removes all the DOM event listeners added by `mount()`
+    #listeners: AbortController | null = null
 
     #pathMaker: PathMaker | null = null
     #nextPathNode: PathNode | null = null
@@ -235,6 +244,8 @@ export class CellDLEditor {
     mount(svgContainer: HTMLElement, statusMsg: HTMLElement|null = null, statusPos: HTMLElement|null = null) {
         // Elements are passed in, not looked up by id, as a page may have several editors
         this.#container = svgContainer
+        this.#listeners = new AbortController()
+        const signal = this.#listeners.signal
         this.#statusMsg = statusMsg
         this.#statusPos = statusPos
 
@@ -249,6 +260,7 @@ export class CellDLEditor {
         // out of view.) The container is `position: relative` (see `WrappedEditor.vue`).
         shadowHost.style.cssText = 'position: absolute; inset: 0; overflow: hidden;'
         this.#container.prepend(shadowHost)
+        this.#shadowHost = shadowHost
         this.#shadowRoot = shadowHost.attachShadow({ mode: 'open' })
         const shadowStyle = document.createElement('style')
         // The diagram fills the host (`display: block` so no space is added below it)
@@ -262,45 +274,46 @@ export class CellDLEditor {
         // is the actual diagram element, not the shadow host. (`pointerover` and
         // `pointerout` between elements in the diagram don't propagate out of the
         // shadow tree at all.)
-        this.#shadowRoot.addEventListener('click', this.#pointerClickEvent.bind(this) as EventListener)
-        this.#shadowRoot.addEventListener('dblclick', this.#pointerDoubleClickEvent.bind(this) as EventListener)
+        const shadowRoot = this.#shadowRoot
+        shadowRoot.addEventListener('click', this.#pointerClickEvent.bind(this) as EventListener, { signal })
+        shadowRoot.addEventListener('dblclick', this.#pointerDoubleClickEvent.bind(this) as EventListener, { signal })
 
-        this.#shadowRoot.addEventListener('pointerover', this.#pointerOverEvent.bind(this) as EventListener)
-        this.#shadowRoot.addEventListener('pointerout', this.#pointerOutEvent.bind(this) as EventListener)
+        shadowRoot.addEventListener('pointerover', this.#pointerOverEvent.bind(this) as EventListener, { signal })
+        shadowRoot.addEventListener('pointerout', this.#pointerOutEvent.bind(this) as EventListener, { signal })
 
-        this.#shadowRoot.addEventListener('pointerdown', this.#pointerDownEvent.bind(this) as EventListener)
-        this.#shadowRoot.addEventListener('pointermove', this.#pointerMoveEvent.bind(this) as EventListener)
-        this.#shadowRoot.addEventListener('pointerup', this.#pointerUpEvent.bind(this) as EventListener)
+        shadowRoot.addEventListener('pointerdown', this.#pointerDownEvent.bind(this) as EventListener, { signal })
+        shadowRoot.addEventListener('pointermove', this.#pointerMoveEvent.bind(this) as EventListener, { signal })
+        shadowRoot.addEventListener('pointerup', this.#pointerUpEvent.bind(this) as EventListener, { signal })
 
-        // Editor content focus handlers
-        document.addEventListener('focusin', this.#focusEvent.bind(this))
-        document.addEventListener('focusout', this.#focusEvent.bind(this))
-
-        // Keyboard handlers. Keys are only acted on by the active editor, which is the
-        // editor that was last clicked in (or the first editor mounted).
-        const editorRoot = svgContainer.closest('.celldl-editor') ?? svgContainer
-        if (activeEditor === null) {
-            activeEditor = this
+        // Keyboard handlers. These are on the editor's own root element, so an editor only
+        // acts on keys while focus is somewhere inside it (its canvas, toolbar or panels).
+        // A hidden editor can't have focus, so is never changed by the keyboard. The canvas
+        // is made focusable so that clicking in the diagram gives the editor focus.
+        const editorRoot = svgContainer.closest<HTMLElement>('.celldl-editor') ?? svgContainer
+        if (!this.#container.hasAttribute('tabindex')) {
+            this.#container.tabIndex = 0
         }
-        document.addEventListener('pointerdown', (event: PointerEvent) => {
-            if (event.composedPath().includes(editorRoot)) {
-                activeEditor = this
-            }
-        }, { capture: true })
-        window.addEventListener('keydown', (event: KeyboardEvent) => {
-            if (activeEditor === this) {
+        // The diagram's pointer handlers may prevent default actions, including focusing
+        shadowRoot.addEventListener('pointerdown', () => {
+            this.#container?.focus({ preventScroll: true })
+        }, { signal, capture: true })
+        // Browsers don't always move focus out of an element when it's hidden (e.g. with
+        // `display: none` when switching tabs), so also check the editor is visible.
+        const visible = () => editorRoot.checkVisibility({ visibilityProperty: true })
+        editorRoot.addEventListener('keydown', (event: KeyboardEvent) => {
+            if (visible()) {
                 this.#keyDownEvent(event)
             }
-        })
-        window.addEventListener('keyup', (event: KeyboardEvent) => {
-            if (activeEditor === this) {
+        }, { signal })
+        editorRoot.addEventListener('keyup', (event: KeyboardEvent) => {
+            if (visible()) {
                 this.#keyUpEvent(event)
             }
-        })
+        }, { signal })
 
         // Add handlers for dropping components on the canvas
-        this.#container.addEventListener('dragover', this.#appDragOverEvent.bind(this))
-        this.#container.addEventListener('drop', this.#appDropEvent.bind(this))
+        this.#container.addEventListener('dragover', this.#appDragOverEvent.bind(this), { signal })
+        this.#container.addEventListener('drop', this.#appDropEvent.bind(this), { signal })
 
         // Create a tooltip
 
@@ -319,7 +332,7 @@ export class CellDLEditor {
             this.#tooltipElement = this.#tooltip.value.popper
         }
         // Handle context menu events
-        this.#shadowRoot.addEventListener('contextmenu', (event) => {
+        shadowRoot.addEventListener('contextmenu', (event) => {
             const element = event.target as SVGGraphicsElement
             const clickedObject = this.#celldlDiagram!.objectById(getElementId(element))
             if (clickedObject && clickedObject === this.currentObject) {
@@ -332,7 +345,7 @@ export class CellDLEditor {
                     event: event
                 }
             }))
-        })
+        }, { signal })
         this.events.addEventListener('context-menu-click', (event: Event) => {
             const targetId = (<CustomEvent>event).detail.id
             if (targetId === CONTEXT_MENU.DELETE) {
@@ -1134,9 +1147,29 @@ export class CellDLEditor {
         }
     }
 
-    #focusEvent(event: FocusEvent) {
-        // Detect when no input fields have focus
-        this.#haveFocus = event.type === 'focusout'
+    /**
+     * Release everything `mount()` set up, so that the editor and its diagram can be
+     * garbage collected. Called when the editor's component is unmounted.
+     */
+    destroy() {
+        this.#listeners?.abort()
+        this.#listeners = null
+        this.#panzoom?.destroy()
+        this.#panzoom = null
+        this.#tooltip?.value?.destroy()
+        this.#tooltip = undefined
+        this.#tooltipElement = undefined
+        this.#closeBoxMaker(false)
+        this.#pathMaker?.close()
+        this.#pathMaker = null
+        this.#shadowHost?.remove()
+        this.#shadowHost = null
+        this.#shadowRoot = null
+        this.#celldlDiagram = null
+        this.#svgDiagram = null
+        this.#container = null
+        this.#statusMsg = null
+        this.#statusPos = null
     }
 
     /**
@@ -1147,6 +1180,10 @@ export class CellDLEditor {
     }
 
     #keyDownEvent(event: KeyboardEvent) {
+        // Keys typed into a field (e.g. in a panel) are for that field, not the diagram
+        if (fromEditableElement(event)) {
+            return
+        }
         if (this.#editorMode === EDITOR_MODE.PathDrawing
          && (event.key === 'Escape' || event.key === 'Backspace')) {
             if (this.#pathMaker) {
@@ -1155,12 +1192,9 @@ export class CellDLEditor {
                 this.#pathMaker = null
             }
         } else if (event.key === 'Backspace') {
-            if (this.#haveFocus) {
-                this.#deleteSelectedObjects()
-            } else if (event.target === document.body) {
-                // Prevent the default browser action (navigating back)
-                event.preventDefault()
-            }
+            // Prevent any default browser action (e.g. navigating back)
+            event.preventDefault()
+            this.#deleteSelectedObjects()
         } else if (this.#editorMode === EDITOR_MODE.Selecting
             && (isMacOs() && event.metaKey
             || !isMacOs() && event.ctrlKey)) {

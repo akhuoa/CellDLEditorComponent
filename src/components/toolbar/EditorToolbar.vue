@@ -172,7 +172,7 @@ function styleEvent(toolId: string, styling: Styling) {
 
 .tool-separator {
     width: 10px;
-    background-color: #fee;
+    background-color: #888;
     border-color: var(--editor-border-color);
     border-width: 1px 0;
 }
