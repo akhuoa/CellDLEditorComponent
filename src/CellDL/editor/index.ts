@@ -136,17 +136,6 @@ export function getElementId(element: SVGGraphicsElement): string {
           : element.id
 }
 
-/**
- * Is an event's actual target the document itself (i.e. nothing has focus)?
- *
- * Uses the event's composed path, so that an element inside a shadow root isn't
- * mistaken for its (retargeted) shadow host.
- */
-function isDocumentTarget(event: Event): boolean {
-    const target = event.composedPath()[0] ?? event.target
-    return target === document.body || target === document.documentElement
-}
-
 //==============================================================================
 
 export type PointerEventHandler = (eventType: string, svgElement: SVGGraphicsElement, svgCoords: PointLike) => boolean
