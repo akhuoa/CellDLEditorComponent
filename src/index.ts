@@ -51,6 +51,8 @@ export { bgRdfStatements } from '#root/plugins/bondgraph/bgrdf'
 
 export { editorInitialised } from '#root/utils'
 
+export { celldlEditorThemeCss } from '#root/utils/themeCssVariables'
+
 export { version } from '../package.json'
 
 //==============================================================================

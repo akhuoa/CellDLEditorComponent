@@ -14,6 +14,8 @@
         footer.status-bar
             span.status-msg(ref="statusMsg")
             span.status-pos(ref="statusPos")
+        <!-- Tooltips, the context menu, and dropdowns are shown in here (see utils/overlays.ts) -->
+        div.celldl-overlay-container(ref="overlayContainer")
 </template>
 
 <script setup lang="ts">
@@ -33,6 +35,7 @@ import '#root/assets/style.css'
 import '#root/assets/icons.css'
 
 import * as vueCommon from '#root/utils/vueCommon'
+import { OVERLAY_CONTAINER_KEY, trackOverlayContainer } from '#root/utils/overlays'
 
 import { CellDLDiagram } from '#editor/diagram'
 import { CellDLEditor } from '#editor/editor'
@@ -163,6 +166,12 @@ if (crtInstance) {
 const svgContainer = vue.ref(null)
 const statusMsg = vue.useTemplateRef<HTMLElement>('statusMsg')
 const statusPos = vue.useTemplateRef<HTMLElement>('statusPos')
+const overlayContainer = vue.useTemplateRef<HTMLElement>('overlayContainer')
+
+// Our child components show their overlays in our overlay container
+vue.provide(OVERLAY_CONTAINER_KEY, overlayContainer)
+
+let stopTrackingOverlayContainer: (() => void)|undefined
 
 let celldlDiagram: CellDLDiagram|undefined
 
@@ -411,6 +420,9 @@ vue.watch(
 let unmounted = false
 
 vue.onMounted(async () => {
+    if (overlayContainer.value) {
+        stopTrackingOverlayContainer = trackOverlayContainer(overlayContainer.value)
+    }
     if (svgContainer.value) {
         const svgContainerElement: HTMLElement = svgContainer.value
         window.setTimeout(async () => {
@@ -430,6 +442,10 @@ vue.onMounted(async () => {
             emit('editor-ready')
         })
     }
+})
+
+vue.onBeforeUnmount(() => {
+    stopTrackingOverlayContainer?.()
 })
 
 vue.onUnmounted(() => {
@@ -480,5 +496,18 @@ vue.onUnmounted(() => {
 }
 .status-pos {
     float: right;
+}
+.celldl-overlay-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    overflow: visible;
+    pointer-events: none;
+    z-index: 99999;
+}
+.celldl-overlay-container > :deep(*) {
+    pointer-events: auto;
 }
 </style>

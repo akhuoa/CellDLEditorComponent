@@ -1,6 +1,7 @@
 <template lang="pug">
     ContextMenu(
         ref="menu" :model="items"
+        :appendTo="overlayContainer ?? 'body'"
     )
 </template>
 
@@ -15,6 +16,7 @@ useThemeCssVariables('contextmenu')
 
 import { CONTEXT_MENU } from '#editor/editor'
 import { EDITOR_EVENTS_KEY } from '#root/utils/editor-types'
+import { OVERLAY_CONTAINER_KEY } from '#root/utils/overlays'
 
 export type ContextMenuProps = {
     state: Set<CONTEXT_MENU>,
@@ -29,6 +31,9 @@ const props = defineProps<{
 
 // Events go to the editor this component is part of
 const editorEvents = vue.inject(EDITOR_EVENTS_KEY, document)
+
+// Show the menu within the editor's DOM, not in `document.body`
+const overlayContainer = vue.inject(OVERLAY_CONTAINER_KEY, vue.ref(null))
 
 const menu = vue.ref()
 

@@ -22,6 +22,8 @@ limitations under the License.
 import * as vue from 'vue'
 import { useTippy } from "vue-tippy"
 
+import { overlayContainerFor } from '#root/utils/overlays'
+
 import '#root/assets/svgContent.css'
 // Also needed inside each editor's shadow root, where diagram content is styled via `:host` rules
 import svgContentCss from '#root/assets/svgContent.css?inline'
@@ -325,7 +327,9 @@ export class CellDLEditor {
             hideOnClick: false,
             trigger: 'manual',
             arrow: true,
-            followCursor: true
+            followCursor: true,
+            // Keep the tooltip within the editor's DOM (and so its root), not `document.body`
+            appendTo: overlayContainerFor
         })
         if (tippy.value) {
             this.#tooltip = tippy

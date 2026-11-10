@@ -8,6 +8,7 @@
                 @change="selectChange"
                 class="w-full"
                 scrollHeight="400px"
+                :appendTo="overlayContainer ?? 'body'"
                 size="small"
             )
                 template(#value="slotProps")
@@ -53,10 +54,14 @@
 import * as vue from 'vue'
 import { logging } from '#root/utils/logging'
 import { useThemeCssVariables } from '#root/utils/themeCssVariables'
+import { OVERLAY_CONTAINER_KEY } from '#root/utils/overlays'
 
 useThemeCssVariables('floatlabel')
 useThemeCssVariables('inputtext')
 useThemeCssVariables('select')
+
+// Show the dropdown within the editor's DOM, not in `document.body`
+const overlayContainer = vue.inject(OVERLAY_CONTAINER_KEY, vue.ref(null))
 
 import { ucum } from '@atomic-ehr/ucum'
 

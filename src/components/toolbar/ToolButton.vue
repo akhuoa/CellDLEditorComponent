@@ -11,7 +11,7 @@
         :id="toolId"
         :class="buttonClasses"
         :style="buttonStyle"
-        v-tippy="{ content: prompt, placement: 'bottom' }"
+        v-tippy="{ content: prompt, placement: 'bottom', appendTo: overlayContainerFor }"
         :aria-label="prompt"
         :draggable="!!image"
         @click="toolButtonClick"
@@ -30,6 +30,7 @@ import * as vue from 'vue'
 import * as LucideIcons from '@lucide/vue'
 
 import { EDITOR_EVENTS_KEY, type PropertyGroup } from '#root/utils/editor-types'
+import { overlayContainerFor } from '#root/utils/overlays'
 
 const props = defineProps<{
     toolId: string
