@@ -501,8 +501,11 @@ vue.onUnmounted(() => {
     position: fixed;
     top: 0;
     left: 0;
-    width: 0;
-    height: 0;
+    /* The viewport's size, so that overlays (which are absolutely positioned within the
+       container) have the same room to lay out as in the document's body. (With no
+       width, a tooltip would shrink to its narrowest width.) */
+    width: 100vw;
+    height: 100vh;
     overflow: visible;
     pointer-events: none;
     z-index: 99999;
