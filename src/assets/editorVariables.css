@@ -14,12 +14,10 @@
 
 :root {
     --editor-button-hover: #ccc;
-    --editor-compartment-fill: #ccc;
-    --editor-membrane-colour: brown;
-    --editor-membrane-gap: 4;
-    --editor-membrane-radius: 40;
-    --editor-membrane-width: 2;
 }
+
+/* The diagram's compartment and membrane variables are defined in the diagram's
+   shadow root (see `CellDLEditor.mount()`). */
 
 .celldl-dark-mode {
     --editor-canvas-background: var(--p-surface-800);

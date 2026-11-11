@@ -64,10 +64,6 @@ export const KNOWN_LEAKS: KnownLeak[] = [
         checks: ['custom properties']
     },
     {
-        reason: 'inline `--editor-*` variables are set on <html> (src/CellDL/editor/index.ts)',
-        checks: ['html attributes']
-    },
-    {
         reason: 'the `celldl-dark-mode` class is set on <html> (src/utils/vueCommon.ts)',
         checks: ['html attributes'],
         when: ({ theme }) => theme === 'dark'

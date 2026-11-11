@@ -64,11 +64,16 @@ import {
     MEMBRANE_STROKE_WIDTH
 } from '#root/utils/styling'
 
-document.documentElement.style.setProperty('--editor-compartment-fill', COMPARTMENT_BACKGROUND)
-document.documentElement.style.setProperty('--editor-membrane-colour', MEMBRANE_COLOUR)
-document.documentElement.style.setProperty('--editor-membrane-gap', String(MEMBRANE_GAP))
-document.documentElement.style.setProperty('--editor-membrane-radius', String(MEMBRANE_CORNER_RADIUS))
-document.documentElement.style.setProperty('--editor-membrane-width', String(MEMBRANE_STROKE_WIDTH))
+// Variables used by the diagram's stylesheet (`svgContent.css`). They are defined on the
+// diagram's shadow host (see `CellDLEditor.mount()`), rather than on the document's
+// `<html>` element, so that they don't affect the editor's host.
+const DIAGRAM_VARIABLES_CSS = `:host {
+    --editor-compartment-fill: ${COMPARTMENT_BACKGROUND};
+    --editor-membrane-colour: ${MEMBRANE_COLOUR};
+    --editor-membrane-gap: ${MEMBRANE_GAP};
+    --editor-membrane-radius: ${MEMBRANE_CORNER_RADIUS};
+    --editor-membrane-width: ${MEMBRANE_STROKE_WIDTH};
+}`
 
 //==============================================================================
 
@@ -266,7 +271,7 @@ export class CellDLEditor {
         this.#shadowRoot = shadowHost.attachShadow({ mode: 'open' })
         const shadowStyle = document.createElement('style')
         // The diagram fills the host (`display: block` so no space is added below it)
-        shadowStyle.textContent = `${svgContentCss}\n:host > svg { display: block; width: 100%; height: 100%; }`
+        shadowStyle.textContent = `${svgContentCss}\n${DIAGRAM_VARIABLES_CSS}\n:host > svg { display: block; width: 100%; height: 100%; }`
         this.#shadowRoot.append(shadowStyle)
 
         // Create a panzoom handler
