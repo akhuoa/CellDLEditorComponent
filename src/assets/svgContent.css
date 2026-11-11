@@ -1,26 +1,8 @@
-:root {
-    --editor-border-color: var(--p-surface-500);;
-    --editor-tooltip-error: darkred;
-}
-
-:root {
-    --editor-canvas-background: #f8f8f8;
-    --editor-statusbar-background: #ececec;
-}
-
-:root {
-    --editor-button-hover: #ccc;
-    --editor-compartment-fill: #ccc;
-    --editor-membrane-colour: brown;
-    --editor-membrane-gap: 4;
-    --editor-membrane-radius: 40;
-    --editor-membrane-width: 2;
-}
-
-.celldl-dark-mode {
-    --editor-canvas-background: var(--p-surface-800);
-    --editor-statusbar-background: var(--p-surface-700);
-}
+/* Styles for the diagram's content. These are only used in the diagram's shadow root
+   (see `CellDLEditor.mount()`), so `:host` is the diagram's shadow host. They must not be
+   part of the editor's main stylesheet: when the editor is in a host's shadow root (e.g.
+   OpenCOR's), `:host` would match the host's root and these rules would apply to all of
+   the host's elements. The variables used here are in `editorVariables.css`. */
 
 :host svg {
     background-color: var(--editor-canvas-background);
@@ -193,11 +175,4 @@
     opacity: 1;
     stroke: yellow;
     stroke-opacity: 1;
-}
-
-.tooltip-error > .tippy-box {
-    background-color: var(--editor-tooltip-error);
-}
-.tooltip-error > .tippy-box > .tippy-arrow {
-    color: var(--editor-tooltip-error);
 }

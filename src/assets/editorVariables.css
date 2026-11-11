@@ -1,0 +1,34 @@
+/* Editor-wide variables and styles. These are part of the editor's main stylesheet,
+   so must only use selectors that can't affect a host's own elements. (The diagram's
+   styles are in `svgContent.css`, which is only used in the diagram's shadow root.) */
+
+:root {
+    --editor-border-color: var(--p-surface-500);;
+    --editor-tooltip-error: darkred;
+}
+
+:root {
+    --editor-canvas-background: #f8f8f8;
+    --editor-statusbar-background: #ececec;
+}
+
+:root {
+    --editor-button-hover: #ccc;
+    --editor-compartment-fill: #ccc;
+    --editor-membrane-colour: brown;
+    --editor-membrane-gap: 4;
+    --editor-membrane-radius: 40;
+    --editor-membrane-width: 2;
+}
+
+.celldl-dark-mode {
+    --editor-canvas-background: var(--p-surface-800);
+    --editor-statusbar-background: var(--p-surface-700);
+}
+
+.tooltip-error > .tippy-box {
+    background-color: var(--editor-tooltip-error);
+}
+.tooltip-error > .tippy-box > .tippy-arrow {
+    color: var(--editor-tooltip-error);
+}

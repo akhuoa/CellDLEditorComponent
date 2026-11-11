@@ -34,7 +34,10 @@ const UNAFFECTED_APPEARANCES = [
     'element-plus document * tooltip',
     'element-plus shadow light diagram',
     'element-plus shadow light tooltip',
-    'tailwind-primevue shadow light diagram'
+    'tailwind-primevue shadow light diagram',
+    'tailwind-primevue shadow light tooltip',
+    'tailwind-primevue shadow light style-panel',
+    'tailwind-primevue shadow light properties-panel'
 ]
 
 function unaffectedAppearance({ host, placement, theme, state }: LeakContext): boolean {
