@@ -51,7 +51,9 @@
         "format:check": "bunx --bun biome format --config-path ./biome.json --max-diagnostics=none",
         "lint": "bunx --bun biome lint --config-path ./biome.json --fix --error-on-warnings --max-diagnostics=none",
         "start": "cd app && bun run build:dev && vite preview",
-        "version:new": "bun scripts/version.js"
+        "version:new": "bun scripts/version.js",
+        "test": "./scripts/install-bgrdf.sh && vitest run",
+        "test:update": "./scripts/install-bgrdf.sh && vitest run --update"
     },
     "dependencies": {
         "@atomic-ehr/ucum": "^0.2.5",
@@ -90,8 +92,11 @@
         "@types/svg-intersections": "^0.4.4",
         "@typescript/typescript6": "^6.0.2",
         "@vitejs/plugin-vue": "^6.0.8",
+        "@vitest/browser-playwright": "5.1.0",
         "@vue/tsconfig": "^0.8.1",
         "autoprefixer": "^10.5.4",
+        "element-plus": "2.14.8",
+        "playwright": "1.56.1",
         "pug": "^3.0.3",
         "pug-plain-loader": "^1.1.0",
         "tailwindcss": "^4.3.3",
@@ -107,6 +112,8 @@
         "unplugin-vue-components": "^32.1.0",
         "vite": "^8.2.0",
         "vite-plugin-dts": "^5.0.3",
+        "vitepress": "1.6.4",
+        "vitest": "5.1.0",
         "vue-tsc": "^3.3.8"
     }
 }

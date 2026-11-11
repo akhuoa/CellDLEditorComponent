@@ -39,3 +39,6 @@ components.d.ts
 
 # BG-RDF
 src/assets/bg-rdf/*
+
+# Vitest (e.g. screenshots of failed tests)
+.vitest/

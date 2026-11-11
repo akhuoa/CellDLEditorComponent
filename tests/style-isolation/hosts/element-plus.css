@@ -1,0 +1,4 @@
+/* A host like OpenCOR's `test-control` app: Element Plus, plus that app's own CSS. */
+
+@import "element-plus/dist/index.css";
+@import "./element-plus-app.css";

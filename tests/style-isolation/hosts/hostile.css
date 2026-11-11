@@ -1,0 +1,17 @@
+/* A host with aggressive, global CSS. */
+
+html { font-size: 62.5%; line-height: 3; letter-spacing: 0.1em; }
+body { font-family: "Courier New", monospace; color: #c00; cursor: crosshair; user-select: none; }
+* { color: #c00 !important; transition: all 2s; }
+*, *::before, *::after { box-sizing: content-box; }
+main, footer, div { margin: 3px; padding: 3px; }
+button, input, select { border: 3px dashed magenta; background: yellow; font-size: 20px; padding: 6px; border-radius: 0; }
+img, svg { display: block; max-width: 50%; border: 2px solid orange; background: pink; }
+span { text-transform: uppercase; }
+.hidden { display: block !important; }
+.active, .selected, .highlight { outline: 3px solid lime; }
+.error { background: black; }
+.flex { display: block; }
+.p-component { font-family: serif; transition: none !important; }
+.p-card { background: cyan; }
+:root { --p-primary-color: #f0f; --p-content-background: #ff0; --editor-border-color: #0f0; }

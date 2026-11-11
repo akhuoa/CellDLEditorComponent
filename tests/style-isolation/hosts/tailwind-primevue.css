@@ -1,0 +1,6 @@
+/* The reference host: the CSS of the editor's dev app (`app/`), which matches the
+   CellDL Editor app (full Tailwind, including preflight, `tailwindcss-primeui`, and
+   PrimeIcons). The host also installs PrimeVue with the Aura theme (see `index.ts`). */
+
+@import "../../../app/src/assets/app.css";
+@import "primeicons/primeicons.css";
