@@ -1,6 +1,8 @@
 @layer theme, base, components, utilities;
 
 @import "tailwindcss/theme.css" layer(theme);
-@import "tailwindcss/utilities.css" layer(utilities);
+/* Only generate utilities for classes used by the editor itself (in `src/`), not for
+   classes that Tailwind would find elsewhere in the repository (e.g. in `app/`). */
+@import "tailwindcss/utilities.css" layer(utilities) source("../");
 @import "tailwindcss-primeui";
 @import "primeicons/primeicons.css";
