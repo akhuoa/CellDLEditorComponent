@@ -14,6 +14,13 @@ bunx vitest run tests/style-isolation/functionality.test.ts
 
 The first time, install the browsers with `bunx playwright install chromium firefox webkit`.
 
+By default the tests use the component's source. To test the built library instead, i.e. what a host gets from the package (with its own bundled copy of PrimeVue):
+
+```sh
+bun run build:lib
+CELLDL_TEST_DIST=1 bun run test
+```
+
 ## What is tested
 
 Each test mounts the component in a **host**: an application that has its own CSS and, possibly, its own Vue plugins. The hosts are defined in `hosts/index.ts`.
@@ -28,7 +35,7 @@ Each test mounts the component in a **host**: an application that has its own CS
 
 The component is placed in one of two ways:
 - **`document`:** in the host's document.
-- **`shadow`:** inside a host's shadow root, the way OpenCOR does it.
+- **`shadow`:** inside a host's shadow root, the way OpenCOR does it. The host also handles event targets for its shadow root as OpenCOR does (`hosts/shadow-host-compat.ts`).
 
 Every test runs in both the light and the dark theme.
 
@@ -62,7 +69,9 @@ This file checks that the component still works as a user expects. It covers:
 - delete, undo and redo;
 - adding a component from the toolbar, by clicking or by dragging;
 - the Style panel;
-- closing a file.
+- closing a file;
+- overlays (the context menu, a dropdown) staying open when clicked on;
+- the component keeping its diagram when its host detaches or moves it (as OpenCOR does), and being removed when it is unmounted.
 
 ## Reference screenshots
 
@@ -78,7 +87,9 @@ When a screenshot doesn't match, the actual image and a diff image are saved in 
 
 ## Known leaks
 
-`known-leaks.ts` lists the leaks that are known but not yet fixed. Their tests are expected to fail (`test.fails`). When a fix makes such a test pass, Vitest reports it as a failure, so that the leak gets removed from the list. That way, every fix shows up as a change in `known-leaks.ts`.
+`known-leaks.ts` lists leaks that are known but not yet fixed. Their tests are expected to fail (`test.fails`). When a fix makes such a test pass, Vitest reports it as a failure, so that the leak gets removed from the list. That way, every fix shows up as a change in `known-leaks.ts`.
+
+The list is empty at present: the component renders in its own shadow root, with its own Vue app (see `src/editorElement.ts`).
 
 ## Known bug (not about styling)
 

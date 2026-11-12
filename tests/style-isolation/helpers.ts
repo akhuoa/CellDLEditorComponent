@@ -22,6 +22,7 @@ import type { CellDLEditorCommand, Theme } from '#root/index'
 
 import diagramSvg from './fixtures/test.celldl.svg?raw'
 import { getHost, type Host, type HostName } from './hosts'
+import { keepShadowHostEventTargets } from './hosts/shadow-host-compat'
 
 //==============================================================================
 
@@ -158,11 +159,42 @@ function computedStyles(element: Element): Record<string, string> {
 }
 
 /**
+ * Finish the transitions (and finite animations) of the host's elements, so that a
+ * snapshot has their final styles.
+ *
+ * A host's CSS may transition its elements to their styles (e.g. `* { transition: all 2s }`).
+ * A transition of an inherited property starts further transitions in an element's
+ * descendants, so this is repeated until there are none.
+ */
+function finishHostTransitions(wrapper: Element) {
+    const inComponent = (node: Node|null): boolean => {
+        while (node) {
+            if (node === wrapper) return true
+            node = node.parentNode ?? (node instanceof ShadowRoot ? node.host : null)
+        }
+        return false
+    }
+    for (let i = 0; i < 100; i += 1) {
+        const animations = document.getAnimations().filter(animation => {
+            const effect = animation.effect
+            return effect instanceof KeyframeEffect
+                && Number.isFinite(effect.getComputedTiming().endTime)
+                && !inComponent(effect.target)
+        })
+        if (!animations.length) break
+        for (const animation of animations) {
+            animation.finish()
+        }
+    }
+}
+
+/**
  * Take a snapshot of the host: its probe elements' computed styles, the `<html>`
  * element's classes and inline style, PrimeVue's styles in the document's head,
  * and the plugins installed in the host's Vue app.
  */
 function probeHost(mounted: MountedComponent): Snapshot {
+    finishHostTransitions(mounted.wrapper)
     const snapshot: Snapshot = {}
     const roots: [string, Document|ShadowRoot][] = [['document', document]]
     if (mounted.shadowRoot) {
@@ -298,6 +330,8 @@ export interface MountedComponent {
     app: vue.App
     /** The host's shadow root, if the component is placed in one */
     shadowRoot: ShadowRoot|null
+    /** The host's element in which the component is mounted */
+    wrapper: HTMLElement
     /** The root element of the component */
     element: HTMLElement
     /** The host's element that contains (just) the component, in the document's light DOM */
@@ -310,7 +344,7 @@ export interface MountedComponent {
     sendCommand: (command: CellDLEditorCommand) => Promise<void>
     /** Open the test diagram in the component */
     openDiagram: () => Promise<void>
-    /** Find an element in the component's (light) DOM */
+    /** Find an element in the component's DOM (its shadow root, if it has one) */
     query: <T extends Element = HTMLElement>(selector: string) => T
     /** Find an element in the component's diagram */
     queryDiagram: <T extends Element = SVGElement>(selector: string) => T|null
@@ -351,6 +385,7 @@ export async function mountInHost(hostName: HostName, options: MountOptions): Pr
     if (placement === 'shadow') {
         // Like OpenCOR: the host renders itself, and the component, in its shadow root
         shadowRoot = container.attachShadow({ mode: 'open' })
+        keepShadowHostEventTargets(container)
         hostStyle.textContent = toShadowCss(host.css)
         shadowRoot.appendChild(hostStyle)
         parent = shadowRoot
@@ -410,7 +445,7 @@ export async function mountInHost(hostName: HostName, options: MountOptions): Pr
         for (const node of shadowRoot.querySelectorAll(`[${COPIED_STYLE_ATTR}]`)) {
             node.remove()
         }
-        for (const node of componentHeadStyles()) {
+        for (const node of componentHeadStyles(host)) {
             if (node instanceof HTMLStyleElement) {
                 const copy = document.createElement('style')
                 copy.setAttribute(COPIED_STYLE_ATTR, '')
@@ -427,7 +462,16 @@ export async function mountInHost(hostName: HostName, options: MountOptions): Pr
     let mounted: MountedComponent
     const probe = () => probeHost(mounted)
 
+    // The component may render in its own shadow root, in which case that is where
+    // its elements are found
+    const componentRoot = (): Element|ShadowRoot => {
+        return [...wrapper.children].find(child => child.shadowRoot)?.shadowRoot ?? wrapper
+    }
+
+    let unmounted = false
     const unmount = () => {
+        if (unmounted) return
+        unmounted = true
         styleObserver?.disconnect()
         app.unmount()
         container.remove()
@@ -446,6 +490,7 @@ export async function mountInHost(hostName: HostName, options: MountOptions): Pr
         placement,
         app,
         shadowRoot,
+        wrapper,
         element: wrapper,
         container,
         before: {},
@@ -466,14 +511,14 @@ export async function mountInHost(hostName: HostName, options: MountOptions): Pr
             }, { timeout: 10000 })
         },
         query: <T extends Element = HTMLElement>(selector: string): T => {
-            const element = wrapper.querySelector<T>(selector)
+            const element = componentRoot().querySelector<T>(selector)
             if (!element) {
                 throw new Error(`Cannot find '${selector}' in the component`)
             }
             return element
         },
         queryDiagram: <T extends Element = SVGElement>(selector: string): T|null => {
-            const diagramHost = wrapper.querySelector('.celldl-diagram-host')
+            const diagramHost = componentRoot().querySelector('.celldl-diagram-host')
             return diagramHost?.shadowRoot?.querySelector<T>(selector) ?? null
         },
         unmount

@@ -1,7 +1,15 @@
+import path from 'node:path'
+
 import { playwright } from '@vitest/browser-playwright'
 import { defineConfig, mergeConfig } from 'vitest/config'
 
 import viteConfig from './vite.config.ts'
+
+// With `CELLDL_TEST_DIST=1` the built library (`bun run build:lib`) is tested, i.e.
+// what a host gets from the package (e.g. with its own bundled copy of PrimeVue),
+// rather than the library's source.
+
+const testDist = !!process.env.CELLDL_TEST_DIST
 
 // Tests run in real browsers (Vitest Browser Mode, with Playwright as the browser
 // provider), since only a browser computes the CSS cascade, layers, and shadow DOM
@@ -9,6 +17,11 @@ import viteConfig from './vite.config.ts'
 
 export default mergeConfig(viteConfig, defineConfig({
     base: '/',
+    resolve: {
+        alias: testDist
+            ? [{ find: /^#root\/index$/, replacement: path.resolve(import.meta.dirname, 'dist/CellDLEditor.es.js') }]
+            : []
+    },
     optimizeDeps: {
         // Dependencies that are only found once a test runs. Without these, Vite would
         // optimise them, and reload the test, while it runs.

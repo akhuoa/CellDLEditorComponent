@@ -20,6 +20,7 @@ import {
     moveMouseOverCanvas,
     objectPosition,
     openContextMenu,
+    openDropdown,
     openPanel,
     selectObject,
     showToolTip,
@@ -36,6 +37,15 @@ const COMPONENT_SELECTOR = '.celldl-Component'
 function componentCount(mounted: MountedComponent): number {
     const diagramHost = mounted.element.querySelector('.celldl-diagram-host')
     return diagramHost?.shadowRoot?.querySelectorAll(COMPONENT_SELECTOR).length ?? 0
+}
+
+// The element that the host has for the component
+function hostedElement(mounted: MountedComponent): Element {
+    const element = mounted.wrapper.firstElementChild
+    if (!element) {
+        throw new Error('The component has no element')
+    }
+    return element
 }
 
 async function pressUndoRedo(redo: boolean) {
@@ -103,6 +113,26 @@ describe.each(PLACEMENTS)('placement: %s', (placement) => {
             expect(mounted.queryDiagram(`[id="${OBJECT_ID}"]`)).toBeNull()
         })
 
+        test('the context menu and a dropdown stay open when clicked on', async () => {
+            // PrimeVue closes an overlay when a click is outside it, which it finds
+            // out from the click's target, as seen by the document
+            const mounted = await mount()
+            // (An overlay that is closed is only removed once it has faded out)
+            const stayedOpen = () => new Promise(resolve => setTimeout(resolve, 500))
+            const menu = await openContextMenu(mounted, objectPosition(mounted, OBJECT_ID))
+            await userEvent.click(locatorFor(menu), { position: { x: 2, y: 2 } })
+            await stayedOpen()
+            expect(menu.isConnected && menu.getBoundingClientRect().height > 0).toBe(true)
+            await userEvent.keyboard('{Escape}')
+
+            await selectObject(mounted, OBJECT_ID)
+            const panel = await openPanel(mounted, 'properties')
+            const dropdown = await openDropdown(mounted, panel)
+            await userEvent.click(locatorFor(dropdown), { position: { x: 2, y: 2 } })
+            await stayedOpen()
+            expect(dropdown.isConnected && dropdown.getBoundingClientRect().height > 0).toBe(true)
+        })
+
         test('Backspace deletes the selected object, and undo/redo work', async () => {
             const mounted = await mount()
             const count = componentCount(mounted)
@@ -151,6 +181,45 @@ describe.each(PLACEMENTS)('placement: %s', (placement) => {
             // (The object's image is a data URI, so the colour is URI encoded)
             expect(decodeURIComponent(mounted.queryDiagram(`[id="${OBJECT_ID}"]`)?.outerHTML ?? '').toLowerCase())
                 .toContain('#123456')
+        })
+
+        test('the component keeps its diagram when its host detaches or moves it', async () => {
+            // E.g. OpenCOR shows the component in a view that is kept alive (so that is
+            // detached while another view is shown), and moves it between views
+            const mounted = await mount()
+            const count = componentCount(mounted)
+            const element = mounted.element
+            const child = hostedElement(mounted)
+
+            child.remove()
+            await settle(5)
+            mounted.wrapper.appendChild(child)
+            await settle(5)
+            expect(mounted.query('.celldl-editor')).toBe(element)
+            expect(componentCount(mounted)).toBe(count)
+
+            const elsewhere = document.createElement('div')
+            document.body.appendChild(elsewhere)
+            elsewhere.appendChild(child)
+            mounted.wrapper.appendChild(child)
+            elsewhere.remove()
+            await settle(5)
+            expect(mounted.query('.celldl-editor')).toBe(element)
+            expect(componentCount(mounted)).toBe(count)
+
+            // It still works
+            await selectObject(mounted, OBJECT_ID)
+            await userEvent.keyboard('{Backspace}')
+            await waitFor(() => componentCount(mounted) === count - 1, 'the object to be deleted')
+        })
+
+        test('the component is removed when it is unmounted', async () => {
+            const mounted = await mount()
+            const child = hostedElement(mounted)
+            mounted.unmount()
+            await settle(5)
+            expect(child.isConnected).toBe(false)
+            expect((child.shadowRoot ?? child).querySelector('.celldl-editor')).toBeNull()
         })
 
         test('the file is closed', async () => {

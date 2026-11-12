@@ -31,7 +31,13 @@ import {
 
 //==============================================================================
 
-describe.each(HOSTS.map(host => host.name))('host: %s', (hostName) => {
+// Hosts that use PrimeVue come last: their PrimeVue leaves its styles in the document's
+// head, where they would be taken for the component's in the hosts that follow
+
+const hostNames = [...HOSTS].sort((a, b) => Number(a.usesPrimeVue ?? false) - Number(b.usesPrimeVue ?? false))
+                            .map(host => host.name)
+
+describe.each(hostNames)('host: %s', (hostName) => {
     describe.each(PLACEMENTS)('placement: %s', (placement) => {
         describe.each(THEMES)('theme: %s', (theme) => {
             let mounted: MountedComponent
@@ -47,9 +53,9 @@ describe.each(HOSTS.map(host => host.name))('host: %s', (hostName) => {
 
             for (const check of Object.keys(SNAPSHOT_CHECKS) as SnapshotCheck[]) {
                 if (check === 'head styles' && getHost(hostName).usesPrimeVue) {
-                    // The component uses the host's PrimeVue here, so PrimeVue's styles in
-                    // the document's head are the host's as much as the component's
-                    test.skip(`${check} (the component uses the host's PrimeVue)`)
+                    // The host's own PrimeVue writes its styles into the document's head
+                    // while the component is mounted
+                    test.skip(`${check} (the host uses PrimeVue)`)
                     continue
                 }
                 const leak = knownLeak(check, { host: hostName, placement, theme, browser: server.browser })
