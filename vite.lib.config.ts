@@ -8,6 +8,14 @@ import vitePlugin from 'unplugin-vue-components/vite'
 import * as vite from 'vite'
 import dts from 'vite-plugin-dts'
 
+import { primeVueCssPlugin } from './scripts/primevue.css.plugin.ts'
+import {
+    EDITOR_COMPONENTS,
+    emptyStylesheetPlugin,
+    shadowCssPlugin,
+    stripIconFontFacePlugin
+} from './scripts/shadow.css.plugin.ts'
+
 const _dirname = path.dirname(url.fileURLToPath(import.meta.url))
 
 export default vite.defineConfig({
@@ -52,11 +60,18 @@ export default vite.defineConfig({
     },
     plugins: [
         dts({
-            exclude: ['./app/**', './tests/style-isolation/**', './vitest.config.ts'],
+            exclude: ['./app/**', './scripts/**', './tests/style-isolation/**', './vite.config.ts', './vite.lib.config.ts', './vitest.config.ts'],
             insertTypesEntry: true
         }),
         tailwindcssPlugin(),
+        // The editor renders in a shadow root (see src/editorElement.ts)
+        stripIconFontFacePlugin(),
+        shadowCssPlugin(),
+        primeVueCssPlugin(),
         vuePlugin({
+            features: {
+                customElement: EDITOR_COMPONENTS
+            },
             script: {
                 fs: {
                     fileExists: (file: string) => fs.existsSync(file),
@@ -67,6 +82,7 @@ export default vite.defineConfig({
         }),
         vitePlugin({
             resolvers: [primeVueAutoImportResolver.PrimeVueResolver()]
-        })
+        }),
+        emptyStylesheetPlugin('CellDLEditor.css')
     ]
 })

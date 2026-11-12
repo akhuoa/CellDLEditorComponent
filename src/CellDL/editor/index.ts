@@ -24,7 +24,6 @@ import { useTippy } from "vue-tippy"
 
 import { overlayContainerFor } from '#root/utils/overlays'
 
-import '#root/assets/editorVariables.css'
 // Only used inside each editor's shadow root, where diagram content is styled via `:host` rules
 import svgContentCss from '#root/assets/svgContent.css?inline'
 

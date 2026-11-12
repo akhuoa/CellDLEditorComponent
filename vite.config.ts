@@ -8,6 +8,13 @@ import url from 'node:url'
 import vitePlugin from 'unplugin-vue-components/vite'
 import * as vite from 'vite'
 
+import { primeVueCssPlugin } from './scripts/primevue.css.plugin.ts'
+import {
+    EDITOR_COMPONENTS,
+    shadowCssPlugin,
+    stripIconFontFacePlugin
+} from './scripts/shadow.css.plugin.ts'
+
 const _dirname = path.dirname(url.fileURLToPath(import.meta.url))
 
 export default vite.defineConfig({
@@ -34,7 +41,14 @@ export default vite.defineConfig({
         // Note: this must be in sync with electron.vite.config.ts.
 
         tailwindcssPlugin(),
+        // The editor renders in a shadow root (see src/editorElement.ts)
+        stripIconFontFacePlugin(),
+        shadowCssPlugin(),
+        primeVueCssPlugin(),
         vuePlugin({
+            features: {
+                customElement: EDITOR_COMPONENTS
+            },
             script: {
                 fs: {
                     fileExists: (file: string) => fs.existsSync(file),

@@ -1,8 +1,61 @@
-@layer theme, base, components, utilities;
+/* The editor's global styles. They are put into the editor's shadow root (see
+   WrappedEditor.vue), so they don't affect the editor's host. */
 
+@layer celldl-reset, theme, base, components, utilities;
+
+@import "tippy.js/dist/tippy.css";
 @import "tailwindcss/theme.css" layer(theme);
+/* Tailwind's preflight is included since the editor's styles are in a shadow root,
+   where a host's preflight (if it has one) doesn't apply. */
+@import "tailwindcss/preflight.css" layer(base);
 /* Only generate utilities for classes used by the editor itself (in `src/`), not for
    classes that Tailwind would find elsewhere in the repository (e.g. in `app/`). */
 @import "tailwindcss/utilities.css" layer(utilities) source("../");
 @import "tailwindcss-primeui";
 @import "primeicons/primeicons.css";
+@import "./icons.css";
+@import "./editorVariables.css";
+
+/* The shadow host: the only element of the editor that is in its host's DOM. A host
+   sizes it as it did the editor's root element. */
+
+:host {
+    display: flex;
+    flex-direction: column;
+}
+
+/* The editor's root element, which fills the shadow host. It resets every property
+   that it would otherwise inherit from the host (e.g. colour, font, line height).
+   The reset is in the first layer, so that Tailwind's preflight (which sets the root
+   element's properties, as it would those of `html`) and the rules below apply. */
+
+@layer celldl-reset {
+    .celldl-editor {
+        all: initial;
+    }
+}
+
+.celldl-editor {
+    flex: 1 1 auto;
+    min-height: 0;
+    background-color: var(--p-content-background);
+    color: var(--p-content-color);
+    font-family:
+        Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans",
+        "Droid Sans", "Helvetica Neue", sans-serif;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    user-select: none;
+}
+
+/* The editor's hosts (the CellDL Editor app and OpenCOR) show no focus outlines and
+   don't animate PrimeVue's components, which is how the editor has always looked. */
+
+.celldl-editor :focus {
+    outline: none !important;
+}
+
+.celldl-editor .p-component {
+    transition: none !important;
+}

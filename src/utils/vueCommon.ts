@@ -1,71 +1,34 @@
-// From https://github.com/agarny/webapp/blob/main/src/renderer/src/utils/vueCommon.ts
-
-import * as vueusecore from '@vueuse/core';
-
-import * as vue from 'vue';
+import * as vue from 'vue'
 
 import type { Theme } from '..'
 
-// A constant to know the UID of the active instance of OpenCOR.
+//==============================================================================
 
-export const activeInstanceUid = vueusecore.createGlobalState(() => vue.ref<string | null>(null));
+/**
+ * Whether an editor uses dark mode, given its theme. With the `system` theme (the
+ * default) this follows the system's colour scheme.
+ *
+ * Each editor has its own theme, which is set within the editor (see
+ * WrappedEditor.vue), not on the document.
+ *
+ * @param theme The editor's theme
+ */
+export function useDarkMode(theme: () => Theme|undefined): vue.ComputedRef<boolean> {
+    const prefersColorScheme = window.matchMedia('(prefers-color-scheme: light)')
+    const systemDarkMode = vue.ref(!prefersColorScheme.matches)
 
-// Theme composable to know whether OpenCOR uses light mode, dark mode, or system mode.
-
-export const useTheme = vueusecore.createGlobalState(() => {
-  const prefersColorScheme = window.matchMedia('(prefers-color-scheme: light)');
-  const isLightMode = vue.ref(prefersColorScheme.matches);
-  const isDarkMode = vue.ref(!prefersColorScheme.matches);
-  const _theme = vue.ref<Theme>('system');
-
-  function updateLightAndDarkModes(prefersColorScheme: MediaQueryList | MediaQueryListEvent) {
-    isLightMode.value = prefersColorScheme.matches;
-    isDarkMode.value = !prefersColorScheme.matches;
-  }
-
-  function updateDocumentClasses() {
-    document.documentElement.classList.toggle('celldl-dark-mode', isDarkMode.value);
-  }
-
-  prefersColorScheme.addEventListener('change', (event) => {
-    if (_theme.value === 'system') {
-      updateLightAndDarkModes(event);
-      updateDocumentClasses();
+    const updateSystemDarkMode = (event: MediaQueryListEvent) => {
+        systemDarkMode.value = !event.matches
     }
-  });
+    prefersColorScheme.addEventListener('change', updateSystemDarkMode)
+    vue.onUnmounted(() => {
+        prefersColorScheme.removeEventListener('change', updateSystemDarkMode)
+    })
 
-  function theme(): Theme {
-    return _theme.value;
-  }
+    return vue.computed(() => {
+        const editorTheme = theme() ?? 'system'
+        return editorTheme === 'dark' || (editorTheme === 'system' && systemDarkMode.value)
+    })
+}
 
-  function setTheme(newTheme: Theme | undefined) {
-    _theme.value = newTheme ?? 'system';
-
-    if (_theme.value === 'light') {
-      isLightMode.value = true;
-      isDarkMode.value = false;
-    } else if (_theme.value === 'dark') {
-      isLightMode.value = false;
-      isDarkMode.value = true;
-    } else {
-      updateLightAndDarkModes(prefersColorScheme);
-    }
-
-    updateDocumentClasses();
-  }
-
-  function useLightMode(): boolean {
-    return isLightMode.value;
-  }
-
-  function useDarkMode(): boolean {
-    return isDarkMode.value;
-  }
-
-  return {
-    theme,
-    setTheme,
-    useLightMode,
-    useDarkMode
-  };
-});
+//==============================================================================

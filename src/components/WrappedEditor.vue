@@ -1,5 +1,5 @@
 <template lang="pug">
-    .celldl-editor.flex.flex-col
+    .celldl-editor.flex.flex-col(:class="{ 'celldl-dark-mode': darkMode }")
         main.editor-pane.relative.flex.flex-col.grow
             EditorToolbar.editor-bar-h(
                 :leftButtons="toolButtons"
@@ -23,18 +23,14 @@
 
 import * as vue from 'vue'
 
-import primeVueAuraTheme from '@primeuix/themes/aura'
-import primeVueConfig from 'primevue/config'
-
-import vueTippy from 'vue-tippy'
-import 'tippy.js/dist/tippy.css'
+import { css as primeVueCss } from 'virtual:celldl-editor-primevue-css'
 
 //==============================================================================
 
-import '#root/assets/style.css'
-import '#root/assets/icons.css'
+import editorCss from '#root/assets/style.css?inline'
 
 import * as vueCommon from '#root/utils/vueCommon'
+import { useShadowCompat } from '#root/utils/shadowCompat'
 import { OVERLAY_CONTAINER_KEY, trackOverlayContainer } from '#root/utils/overlays'
 
 import { CellDLDiagram } from '#editor/diagram'
@@ -126,39 +122,40 @@ export type EditorData = {
 //==============================================================================
 //==============================================================================
 
-// Setup PrimeVue's theme, vue-tippy, and our plugins
+// The editor is rendered in a shadow root, in its own Vue app, which has its own
+// PrimeVue and vue-tippy (see editorElement.ts)
 
-const crtInstance = vue.getCurrentInstance()
+const host = vue.useHost()
+const shadowRoot = vue.useShadowRoot()
+
+useShadowCompat(host)
+
+// Put our global styles into our shadow root. (Vue puts our components' styles into
+// it, before our root element.) Our own styles come first and PrimeVue's last, which
+// is the order they had in a document.
+
+function createStyleElement(css: string, name: string): HTMLStyleElement {
+    const style = document.createElement('style')
+    style.setAttribute('data-celldl-style', name)
+    style.textContent = css
+    return style
+}
+
+if (shadowRoot) {
+    shadowRoot.prepend(createStyleElement(editorCss, 'editor'))
+    vue.onMounted(() => {
+        shadowRoot.append(createStyleElement(primeVueCss, 'primevue'))
+    })
+}
+
+// Register our Bondgraph and Drawing plugins with the component library manager
 
 const componentLibraryPlugin = new ComponentLibraryPlugin()
 
-if (crtInstance) {
-    const app = crtInstance.appContext.app
+componentLibraryPlugin.registerPlugin(new BondgraphPlugin())
+componentLibraryPlugin.registerPlugin(new DrawingPlugin())
 
-    if (!app.config.globalProperties.$primevue) {
-        app.use(primeVueConfig as unknown as vue.Plugin, {
-            theme: {
-                preset: primeVueAuraTheme,
-                options: {
-                    darkModeSelector: '.celldl-dark-mode'
-                }
-            }
-        })
-    }
-
-    // Install vue-tippy once per app, as several editors may be in it. (Its plugin
-    // registers a `tippy` directive but no global property, so check for that.)
-    if (!app.directive('tippy')) {
-        app.use(vueTippy)
-    }
-
-    // Register our Bondgraph and Drawing plugins with the component library manager
-
-    componentLibraryPlugin.registerPlugin(new BondgraphPlugin())
-    componentLibraryPlugin.registerPlugin(new DrawingPlugin())
-
-// WIP    componentLibraryPlugin.registerPlugin(new ElectricalPlugin())
-}
+// WIP componentLibraryPlugin.registerPlugin(new ElectricalPlugin())
 
 //==============================================================================
 //==============================================================================
@@ -204,14 +201,14 @@ celldlEditor.events.addEventListener('file-edited', () => emit('file-edited'))
 
 //==============================================================================
 
-vueCommon.useTheme().setTheme(props.theme)
+// Our theme. Dark mode is a class of our root element, for our own styles, and an
+// attribute of our shadow host, for PrimeVue's (see scripts/primevue.css.plugin.ts).
 
-vue.watch(
-    () => props.theme,
-    () => {
-        vueCommon.useTheme().setTheme(props.theme)
-    }
-)
+const darkMode = vueCommon.useDarkMode(() => props.theme)
+
+vue.watchEffect(() => {
+    host?.setAttribute('data-celldl-theme', darkMode.value ? 'dark' : 'light')
+})
 
 //==============================================================================
 
